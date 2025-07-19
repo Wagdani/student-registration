@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>تسجيل الطلاب</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #f4f4f4;
+      padding: 20px;
+    }
+    .form-box {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      width: 400px;
+      margin: auto;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .message {
+      margin-top: 15px;
+      font-weight: bold;
+      color: green;
+    }
+    .error {
+      color: red;
+    }
+    #exportBtn {
+      background-color: #28a745;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="form-box">
+  <h2>تسجيل طالب</h2>
+
+  <input type="text" id="studentId" placeholder="رقم الطالب">
+  <input type="text" id="studentName" placeholder="اسم الطالب">
+
+  <select id="groupSelect">
+    <option value="">-- تحميل القروبات ... --</option>
+  </select>
+
+  <button onclick="submitForm()">تسجيل</button>
+  <button id="exportBtn" onclick="downloadExcel()">تصدير Excel</button>
+
+  <div id="response" class="message"></div>
+</div>
+
+<script>
+  const webAppURL = "https://script.google.com/macros/s/AKfycbzunpF3rasvIGeRpR_c7F-byBe4TuS2rqy8YX1o5qtEpphZwuYXwV579OcKn9hzQtv_0w/exec"; // ضع رابط الـ Web App هنا
+
+  async function loadGroups() {
+    const select = document.getElementById("groupSelect");
+    select.innerHTML = "<option value=''>-- تحميل القروبات ... --</option>";
+    try {
+      const response = await fetch(webAppURL);
+      const groups = await response.json();
+
+      if (groups.length === 0) {
+        select.innerHTML = "<option value=''>❌ لا توجد قروبات متاحة</option>";
+        return;
+      }
+
+      select.innerHTML = "";
+      groups.forEach(g => {
+        const option = document.createElement("option");
+        option.value = g.name;
+        option.textContent = `${g.name} (المتبقي ${g.remaining})`;
+        select.appendChild(option);
+      });
+
+    } catch (err) {
+      select.innerHTML = "<option value=''>⚠️ فشل التحميل</option>";
+    }
+  }
+
+  async function submitForm() {
+    const id = document.getElementById("studentId").value.trim();
+    const name = document.getElementById("studentName").value.trim();
+    const group = document.getElementById("groupSelect").value;
+    const responseBox = document.getElementById("response");
+
+    if (!id || !name || !group) {
+      responseBox.innerHTML = "❌ يرجى تعبئة جميع الحقول";
+      responseBox.className = "message error";
+      return;
+    }
+
+    const payload = { id, name, group };
+
+    const res = await fetch(webAppURL, {
+      method: "POST",
+      body: JSON.stringify(payload),
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+
+    const result = await res.text();
+    responseBox.innerHTML = result;
+    responseBox.className = result.includes("✅") ? "message" : "message error";
+
+    if (result.includes("✅")) {
+      document.getElementById("studentId").value = "";
+      document.getElementById("studentName").value = "";
+      document.getElementById("groupSelect").value = "";
+      await loadGroups(); // تحديث القروبات بعد التسجيل
+    }
+  }
+
+  function downloadExcel() {
+    window.location.href = "https://docs.google.com/spreadsheets/d/19iR8_jsNyt2zmsIsGaj24fesRC91GdI_su5BFhM0rDI/export?format=xlsx";
+    // استبدل YOUR_SHEET_ID برقم ID من رابط الشيت
+  }
+
+  // تحميل القروبات عند بدء الصفحة
+  window.onload = loadGroups;
+</script>
+
+</body>
+</html>
